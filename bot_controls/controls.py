@@ -3,13 +3,18 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState , Imu
 from std_msgs.msg import Float64
 import math
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import TransformStamped
+from tf2_ros import TransformBroadcaster # transform tree
 
 class BotController(Node) :
     def __init__(self):
         super().__init__("bot_controller")
+
+        self.odom_msg = Odometry()
 
         ## Robo Geo
         self.wheel_rad = 0.05
@@ -36,13 +41,26 @@ class BotController(Node) :
         self.y = 0.0 
         self.theta = 0.0
 
+        ## Imu
+        self.imu_yaw = 0.0
+
+        ## Fusion Factors
+        self.alpha = 0.98
+
+        ## EKF(Extended kalman Filter)
+
         ## Subscritpions
         self.create_subscription(Twist , '/cmd_vel' , self.cmd_cb , 10)
         self.create_subscription(JointState , '/joint_states' , self.joint_cb , 10)
+        self.create_subscription(Imu , '/imu/data' , self.imu_cb , 10)
 
         ## Publishers
         self.left_pub = self.create_publisher(Float64 , '/left_wheel_velocity_controller/command' , 10)
         self.right_pub = self.create_publisher(Float64 , '/right_wheel_velocity_controller/command' , 10)
+        self.odom_pub = self.create_publisher(Odometry , '/odom' , 10)
+
+        ## Tf
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         ## timer loop
         self.timer = self.create_timer(self.dt ,self.control_loop)
@@ -64,6 +82,11 @@ class BotController(Node) :
         except ValueError :
             # self.get_logger().info("Joint not found in msg")
             pass
+
+    def imu_cb (self,msg):
+        qx, qy , qz , qw = msg.orientation.x , msg.orientation.y , msg.orientation.z , msg.orientation.w
+        yaw = atan2(2*qw*qz , 1-2*qz*qz)
+        self.imu_yaw = yaw
 
     def pid (self , current , target , integral , prev_error):
         error = target - current
@@ -91,7 +114,38 @@ class BotController(Node) :
         self.x = self.x + v*math.cos(self.theta)*self.dt
         self.y = self.y + v*math.sin(self.theta)*self.dt
         self.theta = self.theta + w*self.dt
+        self.theta = self.alpha * self.theta + (1 - self.alpha) * self.imu_yaw
+
+        odom_msg = self.odom_msg
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
+        odom_msg.header.frame_id = "odom"
+        odom_msg.child_frame_id = "base_link"
+        odom_msg.pose.pose.position.x = self.x
+        odom_msg.pose.pose.position.y = self.y
+        odom_msg.pose.pose.position.z = 0.0
+        odom_msg.pose.pose.orientation.x = 0.0
+        odom_msg.pose.pose.orientation.y = 0.0
+        odom_msg.pose.pose.orientation.z = math.sin(self.theta / 2)
+        odom_msg.pose.pose.orientation.w = math.cos(self.theta / 2)
+        odom_msg.twist.twist.linear.x = v
+        odom_msg.twist.twist.angular.z = w
+
+        self.odom_pub.publish(odom_msg)
         self.get_logger().info(f"Odometry : x = {self.x} , y = {self.y} , theta = {self.theta}")
+
+        ## Transform Tree Calculations
+        tf_msg = TransformStamped()
+        tf_msg.header.stamp = self.get_clock().now().to_msg()
+        tf_msg.header.frame_id = "odom"
+        tf_msg.child_frame_id = "base_link"
+        tf_msg.transform.translation.x = self.x
+        tf_msg.transform.translation.y = self.y
+        tf_msg.transform.translation.z = 0.0
+        tf_msg.transform.rotation.x = 0.0
+        tf_msg.transform.rotation.y = 0.0
+        tf_msg.transform.rotation.z = math.sin(self.theta / 2)
+        tf_msg.transform.rotation.w = math.cos(self.theta / 2)
+        self.tf_broadcaster.sendTransform(tf_msg)
 
 
 def main(args=None):
