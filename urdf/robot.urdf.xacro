@@ -10,6 +10,9 @@
       <geometry>
         <box size="0.30 0.20 0.10"/>
       </geometry>
+			<material name="black">
+  			<color rgba="0 0 1 1"/>
+			</material>
     </visual>
     <collision>
       <geometry>
@@ -23,27 +26,70 @@
     </inertial>
   </link>
 
-  <link name="left_wheel">
-    <visual>
-      <geometry>
-        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
-      </geometry>
-    </visual>
-  </link>
+	<link name="left_wheel">
+		<visual>
+			<origin xyz="0 0 0" rpy="1.5707 0 0"/>
+			<geometry>
+				<cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+			</geometry>
+			<material name="black">
+  			<color rgba="0 0 0 1"/>
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0 0 0" rpy="1.5707 0 0"/>
+			<geometry>
+				<cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+			</geometry>
+			<material name="black">
+  			<color rgba="0 0 0 1"/>
+			</material>
+		</collision>
+		<inertial>
+			<mass value="0.2"/>
+			<origin xyz="0 0 0"/>
+			<inertia ixx="0.0005" ixy="0" ixz="0"
+							iyy="0.0005" iyz="0"
+							izz="0.0005"/>
+		</inertial>
+	</link>
 
-  <link name="right_wheel">
-    <visual>
-      <geometry>
-        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
-      </geometry>
-    </visual>
-  </link>
+	<link name="right_wheel">
+		<visual>
+			<origin xyz="0 0 0" rpy="1.5707 0 0"/>
+			<geometry>
+				<cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+			</geometry>
+			<material name="black">
+  			<color rgba="0 0 0 1"/>
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0 0 0" rpy="1.5707 0 0"/>
+			<geometry>
+				<cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+			</geometry>
+			<material name="black">
+  			<color rgba="0 0 0 1"/>
+			</material>
+		</collision>
+		<inertial>
+			<mass value="0.2"/>
+			<origin xyz="0 0 0"/>
+			<inertia ixx="0.0005" ixy="0" ixz="0"
+							iyy="0.0005" iyz="0"
+							izz="0.0005"/>
+		</inertial>
+	</link>
 
   <link name="caster_wheel">
     <visual>
       <geometry>
         <sphere radius="0.03"/>
       </geometry>
+			<material name="black">
+  			<color rgba="0 0 0 1"/>
+			</material>
     </visual>
   </link>
 
@@ -77,7 +123,7 @@
 
   <ros2_control name="DiffBotSystem" type="system">
     <hardware>
-      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
     </hardware>
 
     <joint name="left_wheel_joint">
@@ -93,9 +139,11 @@
     </joint>
   </ros2_control>
 
-  <gazebo>
-    <plugin filename="libgz_ros2_control-system.so"
-            name="gz_ros2_control::GazeboSimROS2ControlPlugin"/>
-  </gazebo>
+	<gazebo>
+		<plugin filename="libgazebo_ros2_control.so"
+						name="gazebo_ros2_control">
+			<parameters>$(find bot_controls)/config/controllers.yaml</parameters>
+		</plugin>
+	</gazebo>
 
 </robot>

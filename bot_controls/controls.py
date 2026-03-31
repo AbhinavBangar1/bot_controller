@@ -5,14 +5,17 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64
+import math
 
 class BotController(Node) :
     def __init__(self):
         super().__init__("bot_controller")
+
         ## Robo Geo
         self.wheel_rad = 0.05
         self.wheel_base = 0.20
         self.dt = 0.02  # llop time
+
         ## Tuning values
         self.kp = 0.5
         self.ki = 0.0
@@ -27,6 +30,11 @@ class BotController(Node) :
         self.target_right_vel = 0.0
         self.curr_left_vel = 0.0
         self.curr_right_vel = 0.0
+
+        ## Robot States
+        self.x = 0.0
+        self.y = 0.0 
+        self.theta = 0.0
 
         ## Subscritpions
         self.create_subscription(Twist , '/cmd_vel' , self.cmd_cb , 10)
@@ -74,6 +82,16 @@ class BotController(Node) :
         right_msg.data = right_pid
         self.left_pub.publish(left_msg)
         self.right_pub.publish(right_msg)
+
+        ## Odometry calculation
+        v_l = self.curr_left_vel * self.wheel_rad 
+        v_r = self.curr_right_vel * self.wheel_rad
+        v = (v_l + v_r) / 2 ## Central linear velocity
+        w = (v_r - v_l) / self.wheel_base ## Central angular velocity
+        self.x = self.x + v*math.cos(self.theta)*self.dt
+        self.y = self.y + v*math.sin(self.theta)*self.dt
+        self.theta = self.theta + w*self.dt
+        self.get_logger().info(f"Odometry : x = {self.x} , y = {self.y} , theta = {self.theta}")
 
 
 def main(args=None):
