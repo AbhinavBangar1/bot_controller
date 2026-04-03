@@ -72,6 +72,9 @@ class BotController(Node) :
 
         self.target_left_vel = (v - c) / self.wheel_rad
         self.target_right_vel = (v + c) / self.wheel_rad
+        self.get_logger().info(
+            f"Target L={self.target_left_vel}, R={self.target_right_vel}"
+        )
 
     def joint_cb(self,msg):
         try :
@@ -85,7 +88,7 @@ class BotController(Node) :
 
     def imu_cb (self,msg):
         qx, qy , qz , qw = msg.orientation.x , msg.orientation.y , msg.orientation.z , msg.orientation.w
-        yaw = atan2(2*qw*qz , 1-2*qz*qz)
+        yaw = math.atan2(2*qw*qz , 1-2*qz*qz)
         self.imu_yaw = yaw
 
     def pid (self , current , target , integral , prev_error):
@@ -115,6 +118,7 @@ class BotController(Node) :
         self.y = self.y + v*math.sin(self.theta)*self.dt
         self.theta = self.theta + w*self.dt
         self.theta = self.alpha * self.theta + (1 - self.alpha) * self.imu_yaw
+        # self.get_logger().info(f"L={self.curr_left_vel}, R={self.curr_right_vel}")
 
         odom_msg = self.odom_msg
         odom_msg.header.stamp = self.get_clock().now().to_msg()
@@ -145,7 +149,7 @@ class BotController(Node) :
         tf_msg.transform.rotation.y = 0.0
         tf_msg.transform.rotation.z = math.sin(self.theta / 2)
         tf_msg.transform.rotation.w = math.cos(self.theta / 2)
-        self.tf_broadcaster.sendTransform(tf_msg)
+        # self.tf_broadcaster.sendTransform(tf_msg)
 
 
 def main(args=None):

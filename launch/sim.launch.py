@@ -10,6 +10,7 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('bot_controls')
     urdf_path = os.path.join(pkg_share, 'urdf' , 'robot.urdf.xacro')
     controller_path = os.path.join (pkg_share , 'config' , 'controllers.yaml')
+    ekf_path = os.path.join(pkg_share , 'config' , 'ekf.yaml')
     launch_file_dir = os.path.join(pkg_share , 'launch')
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     robot_description = xacro.process_file(urdf_path).toxml()
@@ -58,9 +59,25 @@ def generate_launch_description():
         ]
     )
 
+    robot_localization_node = Node(
+        package = 'robot_localization' ,
+        executable = 'ekf_node' ,
+        name = 'ekf_filter_node' ,
+        parameters = [ekf_path]
+    )
+
+    bot_controller_node = Node(
+        package='bot_controls',
+        executable='controls.py',
+        name='bot_controller',
+        output='screen'
+    )
+
     return LaunchDescription([
         gazebo ,
         robot_state_publisher_node ,
         spawn_robot ,
-        controller_loader
+        controller_loader ,
+        robot_localization_node ,
+        bot_controller_node
     ])
